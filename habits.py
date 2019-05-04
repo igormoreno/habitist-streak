@@ -73,9 +73,8 @@ def track_label_id(api):
     return None
 
 def track_task(api, task_url):
-    logger.info("request to track task: %s",task_url)
+    logger.info("completed task: %s",task_url)
     task = api.items.get_by_id(int(parse_task_id(task_url)))
-    logger.debug('task: %s | labels: %s, in: %s' % (task['content'], task['labels'], track_label_id(api) in task['labels']))
     if task and track_label_id(api) in task['labels']:
         tag_existio(strip_streak(task['content']))
 
