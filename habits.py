@@ -8,16 +8,38 @@ import os
 import re
 import logging
 from todoist.api import TodoistAPI
+import requests
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-def get_token():
-    token = os.getenv('TODOIST_APIKEY')
-    return token
+label_to_track = 'track'
+
+def get_todoist_token():
+    return os.getenv('TODOIST_APIKEY')
+
+def get_existio_token():
+    return os.getenv('EXISTIO_APIKEY')
+
+def tag_existio(tag):
+    response = requests.post(
+                      'https://exist.io/api/1/attributes/custom/append/',
+                      headers={'Authorization':'Bearer '+get_existio_token()},
+                      json={"value":tag})
+    logging.info('tagging in existio: %s',tag)
+    logging.info('response: %s',response.text)
+    return response
+
 
 def is_habit(text):
-    return re.search(r'\[streak\s(\d+)\]', text)
+    return re.search(r'([\w|\s]*\w)\s+\[streak\s(\d+)\]', text)
+
+def strip_streak(text):
+    habit_match = is_habit(text)
+    if habit_match:
+        return habit_match.group(1)
+    else:
+        return text
 
 def update_streak(item, streak):
     streak_num = '[streak {}]'.format(streak)
@@ -34,14 +56,29 @@ def is_due(text):
     yesterday = datetime.utcnow().strftime("%a %d %b")
     return text[:10] == yesterday
 
+def is_in_url(task, task_url):
+    return int(task['id']) == int(parse_task_id(task_url))
+
 def increment_streak(api, task_url):
     tasks = api.state['items']
     for task in tasks:
-        if int(task['id']) == int(parse_task_id(task_url)) and is_habit(task['content']):
-            habit = is_habit(task['content'])
-            streak = int(habit.group(1)) + 1
+        habit_match = is_habit(task['content'])
+        if is_in_url(task, task_url) and habit_match:
+            streak = int(habit_match.group(2)) + 1
             update_streak(task, streak)
     api.commit()
+
+def track_label_id(api):
+    for label in api.state['labels']:
+        if label['name'] == label_to_track:
+            return label['id']
+    return None
+
+def track_task(api, task_url):
+    tasks = api.state['items']
+    for task in tasks:
+        if is_in_url(task, task_url) and track_label_id(api) in task['labels']:
+            tag_existio(strip_streak(talk['content']))
 
 def reset_streak(api):
     tasks = api.state['items']
@@ -53,11 +90,12 @@ def reset_streak(api):
     api.commit()
 
 def main():
-    API_TOKEN = get_token()
-    if not API_TOKEN:
-        logging.warn('Please set the API token in environment variable.')
+    TODOIST_API_TOKEN = get_todoist_token()
+    EXISTIO_API_TOKEN = get_existio_token()
+    if not TODOIST_API_TOKEN or not EXISTIO_API_TOKEN:
+        logging.warning('Please set the API token in environment variable.')
         exit()
-    api = TodoistAPI(API_TOKEN)
+    api = TodoistAPI(TODOIST_API_TOKEN)
     api.sync()
     return api
 

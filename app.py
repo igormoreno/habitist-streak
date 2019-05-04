@@ -8,6 +8,7 @@ def index():
     api = habits.main()
     task_url = str(request.data)
     habits.increment_streak(api, task_url)
+    habits.track_task(api, task_url)
     return 'Completed increment streak.'
 
 @app.route('/reset_streak')

@@ -1,6 +1,6 @@
 {
   "name": "Habitist (Streak)",
   "description": "A webapp to integrate habit tracking in todoist",
-  "repository": "https://github.com/briankaemingk/habitist-streak",
-  "keywords": ["todoist", "flask", "ifttt"]
+  "repository": "https://github.com/igormoreno/habitist-streak",
+  "keywords": ["todoist", "flask", "ifttt", "exist.io"]
 }
