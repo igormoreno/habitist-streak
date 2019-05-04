@@ -58,16 +58,12 @@ def is_due(text):
     yesterday = datetime.utcnow().strftime("%a %d %b")
     return text[:10] == yesterday
 
-def is_in_url(task, task_url):
-    return int(task['id']) == int(parse_task_id(task_url))
-
 def increment_streak(api, task_url):
-    tasks = api.state['items']
-    for task in tasks:
+    task = api.items.get_by_id(int(parse_task_id(task_url)))
+    if task and is_habit(task['content']):
         habit_match = is_habit(task['content'])
-        if is_in_url(task, task_url) and habit_match:
-            streak = int(habit_match.group(2)) + 1
-            update_streak(task, streak)
+        streak = int(habit_match.group(2)) + 1
+        update_streak(task, streak)
     api.commit()
 
 def track_label_id(api):
@@ -78,12 +74,10 @@ def track_label_id(api):
 
 def track_task(api, task_url):
     logger.info("request to track task: %s",task_url)
-    tasks = api.state['items']
-    logger.debug('track label id: %s' % track_label_id(api))
-    for task in tasks:
-        logger.debug('%s ==> id: %d, the one: %s | labels: %s, in: %s' % (task['content'], int(task['id']), is_in_url(task, task_url), task['labels'], track_label_id(api) in task['labels']))
-        if is_in_url(task, task_url) and track_label_id(api) in task['labels']:
-            tag_existio(strip_streak(task['content']))
+    task = api.items.get_by_id(int(parse_task_id(task_url)))
+    logger.debug('task: %s | labels: %s, in: %s' % (task['content'], task['labels'], track_label_id(api) in task['labels']))
+    if task and track_label_id(api) in task['labels']:
+        tag_existio(strip_streak(task['content']))
 
 def reset_streak(api):
     tasks = api.state['items']
